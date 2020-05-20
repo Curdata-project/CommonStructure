@@ -105,7 +105,7 @@ mod tests {
 
         // 钱包
         let wallet_keypair_sm2: KeyPairSm2 = KeyPairSm2::generate(&mut rng).unwrap();
-        let wallet_cert = keypair_sm2.get_certificate();
+        let wallet_cert = wallet_keypair_sm2.get_certificate();
 
         let mut currencys = Vec::<(u64, u64)>::new();
         currencys.push((100, 1));
@@ -122,6 +122,7 @@ mod tests {
 
             quota.fill_kvhead(&keypair_sm2).unwrap();
 
+            // 额度控制位
             let sign_bytes = quota.to_bytes();
 
             //DigitalCurrency
