@@ -194,7 +194,6 @@ mod tests {
             33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
         ])
         .unwrap();
-        let cert = keypair_sm2.get_certificate();
 
         let mut recycle_info = Vec::<(u64, u64)>::new();
         recycle_info.push((10, 5));

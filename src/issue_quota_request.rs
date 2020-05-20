@@ -261,7 +261,6 @@ mod tests {
             33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
         ])
         .unwrap();
-        let cert_cms = keypair_cms.get_certificate();
 
         // 货币发行系统
         let keypair_dcds: KeyPairSm2 = KeyPairSm2::generate_from_seed([
@@ -269,7 +268,6 @@ mod tests {
             33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
         ])
         .unwrap();
-        let cert_dcds = keypair_cms.get_certificate();
 
         let mut issue_info = Vec::<(u64, u64)>::new();
         issue_info.push((10, 5));
