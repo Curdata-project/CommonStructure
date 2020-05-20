@@ -67,17 +67,7 @@ impl AttrProxy for Issue {
 
     // 根据key读取值
     fn get_key(&self, key: &str) -> Result<Self::Byte, KVObjectError> {
-        let mut ret = Vec::<u8>::new();
-
-        for each in self.currencys.iter() {
-            ret.extend_from_slice(&each.0.to_le_bytes()[..]);
-            ret.extend_from_slice(&each.1.to_le_bytes()[..]);
-        }
-
-        match key {
-            "currencys" => Ok(ret),
-            _ => Err(KVObjectError::KeyIndexError),
-        }
+        Err(KVObjectError::KeyIndexError)
     }
 
     // 根据key写值
@@ -146,7 +136,9 @@ mod tests {
         currencys.push((10, 5));
         let mut issue = IssueWrapper::new(MsgType::ISSUE, Issue { currencys });
 
-        let sign_bytes = issue.to_bytes(&keypair_sm2).unwrap();
+        issue.fill_kvhead(&keypair_sm2).unwrap();
+
+        let sign_bytes = issue.to_bytes();
 
         println!("sigture: {:?}", sign_bytes);
 
@@ -188,7 +180,11 @@ mod tests {
         for each_quota in quotas.iter() {
             let mut quota = QuotaWrapper::new(MsgType::Quota, each_quota.clone());
 
-            let sign_bytes = quota.to_bytes(&keypair_sm2).unwrap();
+            quota.fill_kvhead(&keypair_sm2).unwrap();
+
+            println!("quota: {:?}", quota);
+
+            let sign_bytes = quota.to_bytes();
 
             println!("sigture: {:?}", sign_bytes);
 

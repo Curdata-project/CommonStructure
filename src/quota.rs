@@ -110,20 +110,7 @@ impl AttrProxy for Quota {
 
     // 根据key读取值
     fn get_key(&self, key: &str) -> Result<Self::Byte, KVObjectError> {
-        let mut ret = Vec::<u8>::new();
-
-        let timestamp_ = self.timestamp.to_le_bytes();
-        let value_ = self.value.to_le_bytes();
-        let delivery_system_ = self.delivery_system.to_bytes();
-        ret.extend_from_slice(match key {
-            "id" => &self.id[..],
-            "timestamp" => &timestamp_[..],
-            "value" => &value_[..],
-            "delivery_system" => delivery_system_.as_ref(),
-            "trade_hash" => &self.trade_hash[..],
-            _ => return Err(KVObjectError::KeyIndexError),
-        });
-        Ok(ret)
+        Err(KVObjectError::KeyIndexError)
     }
 
     // 根据key写值
