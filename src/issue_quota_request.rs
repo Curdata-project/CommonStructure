@@ -15,7 +15,7 @@ use std::io::Cursor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IssueQuotaRequest {
-    /// 发行请求ID，256bit，根据Hash[ 额度发行信息 | 发行系统证书 | 随机值 ]
+    /// 发行请求ID，256bit，根据Hash[ 额度发行信息 | 发行系统证书 | 时间戳 | 随机值 ]
     issue_id: [u8; 32],
     /// 额度发行信息，Vec<面值, 数目>，二元组根据面值从小到大排列，且以面值索引唯一
     issue_info: Vec<(u64, u64)>,
@@ -41,6 +41,10 @@ impl IssueQuotaRequest {
         let mut hasher = Sm3::default();
         hasher.update(&issue_info_b);
         hasher.update(delivery_system.to_bytes().as_ref());
+        
+        let now = Local::now();
+        let timestamp = now.timestamp_millis();
+        hasher.update(timestamp.to_le_bytes());
 
         let mut arr = [0u8; 32];
         rng.fill_bytes(&mut arr);

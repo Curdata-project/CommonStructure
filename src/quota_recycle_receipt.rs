@@ -4,6 +4,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use dislog_hal::Bytes;
 use dislog_hal::Hasher;
 use kv_object::kv_object::{KVBody, KVObject};
+use chrono::prelude::Local;
 use kv_object::prelude::{AttrProxy, KValueObject};
 use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
@@ -14,7 +15,7 @@ use std::io::Cursor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuotaRecycleReceipt {
-    /// 发行请求ID，256bit，根据Hash[ 额度发行信息 | 发行系统证书 | 随机值 ]
+    /// 发行请求ID，256bit，根据Hash[ 额度发行信息 | 发行系统证书 | 时间戳 | 随机值 ]
     recycle_id: [u8; 32],
     /// Vec<面值, 数目>，二元组根据面值从小到大排列，且以面值索引唯一
     recycle_info: Vec<(u64, u64)>,
@@ -27,7 +28,7 @@ impl QuotaRecycleReceipt {
     //pub const ISSUR_QUOTA_FIELD_LEN: usize = 32 + 4 + N * 16 + 33;
     pub const RECYCLE_INFO_OFFSET: usize = 32;
 
-    pub fn new(recycle_info: Vec<(u64, u64)>, delivery_system: CertificateSm2) -> Self {
+    fn new(recycle_info: Vec<(u64, u64)>, delivery_system: CertificateSm2) -> Self {
         let mut rng = rand::thread_rng();
 
         let mut recycle_info_b = Vec::<u8>::new();
@@ -40,6 +41,10 @@ impl QuotaRecycleReceipt {
         let mut hasher = Sm3::default();
         hasher.update(&recycle_info_b);
         hasher.update(delivery_system.to_bytes().as_ref());
+        
+        let now = Local::now();
+        let timestamp = now.timestamp_millis();
+        hasher.update(timestamp.to_le_bytes());
 
         let mut arr = [0u8; 32];
         rng.fill_bytes(&mut arr);
