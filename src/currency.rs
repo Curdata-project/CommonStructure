@@ -7,14 +7,14 @@ use kv_object::KVObjectError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Currency {
+pub struct DigitalCurrency {
     /// 数字货币额度控制位
     quota_info: Vec<u8>,
     /// 钱包公钥
     wallet_cert: CertificateSm2,
 }
 
-impl Currency {
+impl DigitalCurrency {
     pub const CURRENCY_LEN: usize = Quota::QUOTA_LEN_WITH_KVHEAD + 33;
 
     pub fn new(quota: Vec<u8>, cert: CertificateSm2) -> Self {
@@ -33,7 +33,7 @@ impl Currency {
     }
 }
 
-impl Bytes for Currency {
+impl Bytes for DigitalCurrency {
     type BytesType = Vec<u8>;
 
     type Error = KVObjectError;
@@ -64,7 +64,7 @@ impl Bytes for Currency {
     }
 }
 
-impl AttrProxy for Currency {
+impl AttrProxy for DigitalCurrency {
     type Byte = Vec<u8>;
 
     // 根据key读取值
@@ -78,18 +78,18 @@ impl AttrProxy for Currency {
     }
 }
 
-impl KVBody for Currency {}
+impl KVBody for DigitalCurrency {}
 
-pub type CurrencyWrapper = KVObject<Currency>;
+pub type DigitalCurrencyWrapper = KVObject<DigitalCurrency>;
 
 #[cfg(test)]
 mod tests {
 
     #[test]
-    fn test_issue_currency() {
+    fn test_issue_digitalcurrency() {
         use super::super::issue::Issue;
         use super::super::quota::QuotaWrapper;
-        use super::{Currency, CurrencyWrapper};
+        use super::{DigitalCurrency, DigitalCurrencyWrapper};
         use asymmetric_crypto::prelude::Keypair;
         use kv_object::kv_object::MsgType;
         use kv_object::prelude::KValueObject;
@@ -120,23 +120,23 @@ mod tests {
 
             let sign_bytes = quota.to_bytes(&keypair_sm2).unwrap();
 
-            //currency
-            let currency = CurrencyWrapper::new(
+            //DigitalCurrency
+            let DigitalCurrency = DigitalCurrencyWrapper::new(
                 MsgType::Currency,
-                Currency::new(sign_bytes, wallet_cert.clone()),
+                DigitalCurrency::new(sign_bytes, wallet_cert.clone()),
             );
 
             let _sign_bytes = quota.to_bytes(&wallet_keypair_sm2).unwrap();
 
-            println!("currency: {:?}", currency);
+            println!("DigitalCurrency: {:?}", DigitalCurrency);
 
-            let serialized = serde_json::to_string(&currency).unwrap();
-            println!("serialized currency = {}", serialized);
+            let serialized = serde_json::to_string(&DigitalCurrency).unwrap();
+            println!("serialized DigitalCurrency = {}", serialized);
 
-            let deserialized: CurrencyWrapper = serde_json::from_str(&serialized).unwrap();
-            println!("deserialized currency = {:?}", deserialized);
+            let deserialized: DigitalCurrencyWrapper = serde_json::from_str(&serialized).unwrap();
+            println!("deserialized DigitalCurrency = {:?}", deserialized);
 
-            let deserialized_obj: Currency = deserialized.get_body().clone();
+            let deserialized_obj: DigitalCurrency = deserialized.get_body().clone();
             println!("deserialized_obj = {:?}", deserialized_obj);
         }
     }
