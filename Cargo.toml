@@ -1,0 +1,18 @@
+[package]
+name = "common_structure"
+version = "0.1.0"
+authors = ["xujian <s1473561555@sina.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+rand = "0.7.3"
+dislog-hal = { git = "https://github.com/Yinet-project/dislog-hal" }
+kv-object = { git = "https://curdata-bots:SBf(TdV2yeBP@github.com/Curdata-project/KVObject" }
+asymmetric-crypto = { git ="https://github.com/Yinet-project/asymmetric-crypto" }
+chrono = "0.4.11"
+
+[dev-dependencies]
+serde_json = "1.0"
