@@ -10,8 +10,7 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 rand = "0.7.3"
 dislog-hal = { git = "https://github.com/Yinet-project/dislog-hal" }
-#kv-object = { git = "https://curdata-bots:SBf(TdV2yeBP@github.com/Curdata-project/KVObject" }
-kv-object = { path = "/home/xujian/Rworkspace/kv_object" }
+kv-object = { git = "https://curdata-bots:SBf(TdV2yeBP@github.com/Curdata-project/KVObject" }
 asymmetric-crypto = { git ="https://github.com/Yinet-project/asymmetric-crypto" }
 chrono = "0.4.11"
 hex = { version = "0.4", default-features = false }
