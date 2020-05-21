@@ -1,25 +1,52 @@
 use dislog_hal::Bytes;
+use hex::{FromHex, ToHex};
 use kv_object::kv_object::{KVBody, KVObject, HEAD_TOTAL_LEN};
 use kv_object::prelude::AttrProxy;
 use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Quota {
+pub struct QuotaControlField {
     /// 唯一标识
+    #[serde(
+        serialize_with = "ser_bytes_with",
+        deserialize_with = "deser_bytes_with"
+    )]
     id: [u8; 32],
     /// 时间戳
     timestamp: i64,
     /// 面额
     value: u64,
-    /// 发行系统证书
+    /// 发行系统的sm2证书
     delivery_system: CertificateSm2,
     /// 交易哈希
+    #[serde(
+        serialize_with = "ser_bytes_with",
+        deserialize_with = "deser_bytes_with"
+    )]
     trade_hash: [u8; 32],
 }
 
-impl Quota {
+pub fn ser_bytes_with<S>(obj: &[u8; 32], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&obj.encode_hex_upper::<String>())
+}
+
+pub fn deser_bytes_with<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let d_str = String::deserialize(deserializer)
+        .map_err(|_| serde::de::Error::custom(format_args!("invalid hex string")))?;
+    let field = <[u8; 32]>::from_hex(d_str)
+        .map_err(|_| serde::de::Error::custom(format_args!("invalid hex string")))?;
+    Ok(field)
+}
+
+impl QuotaControlField {
     ///长度: 唯一标识 + 时间戳 + 面额 + 发行系统证书 + 交易哈希
     pub const QUOTA_LEN: usize = 32 + 8 + 8 + 33 + 32;
     pub const QUOTA_LEN_WITH_KVHEAD: usize = HEAD_TOTAL_LEN + 32 + 8 + 8 + 33 + 32;
@@ -61,7 +88,7 @@ impl Quota {
     }
 }
 
-impl Bytes for Quota {
+impl Bytes for QuotaControlField {
     type BytesType = Vec<u8>;
 
     type Error = KVObjectError;
@@ -85,7 +112,7 @@ impl Bytes for Quota {
 
         Ok(Self {
             id: id_,
-            timestamp: i64::from_le_bytes(value_),
+            timestamp: i64::from_le_bytes(timestamp_),
             value: u64::from_le_bytes(value_),
             delivery_system,
             trade_hash: trade_hash_,
@@ -105,11 +132,11 @@ impl Bytes for Quota {
     }
 }
 
-impl AttrProxy for Quota {
+impl AttrProxy for QuotaControlField {
     type Byte = Vec<u8>;
 
     // 根据key读取值
-    fn get_key(&self, key: &str) -> Result<Self::Byte, KVObjectError> {
+    fn get_key(&self, _: &str) -> Result<Self::Byte, KVObjectError> {
         Err(KVObjectError::KeyIndexError)
     }
 
@@ -119,6 +146,6 @@ impl AttrProxy for Quota {
     }
 }
 
-impl KVBody for Quota {}
+impl KVBody for QuotaControlField {}
 
-pub type QuotaWrapper = KVObject<Quota>;
+pub type QuotaControlFieldWrapper = KVObject<QuotaControlField>;
