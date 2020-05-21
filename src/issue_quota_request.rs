@@ -31,17 +31,15 @@ impl IssueQuotaRequest {
     pub fn new(issue_info: Vec<(u64, u64)>, delivery_system: CertificateSm2) -> Self {
         let mut rng = rand::thread_rng();
 
-        let mut issue_info_b = Vec::<u8>::new();
+        let mut hasher = Sm3::default();
 
         for each in issue_info.iter() {
-            issue_info_b.write_u64::<LittleEndian>(each.0).unwrap();
-            issue_info_b.write_u64::<LittleEndian>(each.1).unwrap();
+            hasher.update(each.0.to_le_bytes());
+            hasher.update(each.0.to_le_bytes());
         }
 
-        let mut hasher = Sm3::default();
-        hasher.update(&issue_info_b);
         hasher.update(delivery_system.to_bytes().as_ref());
-        
+
         let now = Local::now();
         let timestamp = now.timestamp_millis();
         hasher.update(timestamp.to_le_bytes());
