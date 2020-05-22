@@ -1,5 +1,5 @@
 [package]
-name = "common_structure"
+name = "common-structure"
 version = "0.1.0"
 authors = ["xujian <s1473561555@sina.com>"]
 edition = "2018"
