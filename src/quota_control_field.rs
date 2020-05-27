@@ -1,3 +1,5 @@
+use alloc::string::String;
+use alloc::vec::Vec;
 use dislog_hal::Bytes;
 use hex::{FromHex, ToHex};
 use kv_object::kv_object::{KVBody, KVObject, HEAD_TOTAL_LEN};

@@ -1,6 +1,7 @@
 use super::quota_control_field::QuotaControlField;
+use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use chrono::prelude::Local;
 use core::convert::AsRef;
 use dislog_hal::Bytes;
@@ -11,7 +12,6 @@ use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use std::io::Cursor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IssueQuotaRequest {
@@ -115,12 +115,14 @@ impl Bytes for IssueQuotaRequest {
         if bytes.len() < 36 {
             return Err(KVObjectError::ValueValid);
         }
+        let mut read_offset: usize = 0;
 
         let mut issue_id = [0u8; 32];
         issue_id.clone_from_slice(&bytes[0..IssueQuotaRequest::ISSUE_INFO_OFFSET]);
+        read_offset += IssueQuotaRequest::ISSUE_INFO_OFFSET;
 
-        let mut c = Cursor::new(&bytes[IssueQuotaRequest::ISSUE_INFO_OFFSET..]);
-        let issue_len = c.read_u32::<LittleEndian>().unwrap();
+        let issue_len = LittleEndian::read_u32(&bytes[read_offset..read_offset + 4]);
+        read_offset += 4;
 
         if bytes.len() != (32 + 4 + issue_len * 16 + 33) as usize {
             return Err(KVObjectError::ValueValid);
@@ -128,8 +130,10 @@ impl Bytes for IssueQuotaRequest {
 
         let mut issue_info = Vec::<(u64, u64)>::new();
         for _ in 0..issue_len {
-            let value = c.read_u64::<LittleEndian>().unwrap();
-            let amount = c.read_u64::<LittleEndian>().unwrap();
+            let value = LittleEndian::read_u64(&bytes[read_offset..read_offset + 8]);
+            let amount = LittleEndian::read_u64(&bytes[read_offset + 8..read_offset + 16]);
+
+            read_offset += 16;
             issue_info.push((value, amount));
         }
 
@@ -149,14 +153,19 @@ impl Bytes for IssueQuotaRequest {
 
     fn to_bytes(&self) -> Self::BytesType {
         let mut ret = Vec::<u8>::new();
+        let mut buf_32 = [0; 4];
+        let mut buf_64 = [0; 8];
 
         ret.extend_from_slice(&self.issue_id[..]);
 
-        ret.write_u32::<LittleEndian>(self.issue_info.len() as u32)
-            .unwrap();
+        LittleEndian::write_u32(&mut buf_32, self.issue_info.len() as u32);
+        ret.extend_from_slice(&buf_32);
+
         for each in self.issue_info.iter() {
-            ret.write_u64::<LittleEndian>(each.0).unwrap();
-            ret.write_u64::<LittleEndian>(each.1).unwrap();
+            LittleEndian::write_u64(&mut buf_64, each.0);
+            ret.extend_from_slice(&buf_64);
+            LittleEndian::write_u64(&mut buf_64, each.1);
+            ret.extend_from_slice(&buf_64);
         }
 
         ret.extend_from_slice(self.delivery_system.to_bytes().as_ref());
@@ -182,150 +191,3 @@ impl AttrProxy for IssueQuotaRequest {
 impl KVBody for IssueQuotaRequest {}
 
 pub type IssueQuotaRequestWrapper = KVObject<IssueQuotaRequest>;
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_issue_wrapper() {
-        use super::{IssueQuotaRequest, IssueQuotaRequestWrapper};
-        use asymmetric_crypto::prelude::Keypair;
-        use dislog_hal::Bytes;
-        use kv_object::kv_object::MsgType;
-        use kv_object::prelude::KValueObject;
-        use kv_object::sm2::KeyPairSm2;
-
-        let keypair_cms: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-            3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-            33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
-        ])
-        .unwrap();
-
-        let mut issue_info = Vec::<(u64, u64)>::new();
-        issue_info.push((10, 5));
-        issue_info.push((50, 2));
-        issue_info.push((100, 1));
-        let mut issue_quota = IssueQuotaRequestWrapper::new(
-            MsgType::IssueQuotaRequest,
-            IssueQuotaRequest::new(issue_info, keypair_cms.get_certificate()),
-        );
-
-        issue_quota.fill_kvhead(&keypair_cms).unwrap();
-
-        let sign_bytes = issue_quota.to_bytes();
-
-        let read_issue = IssueQuotaRequestWrapper::from_bytes(&sign_bytes).unwrap();
-
-        assert_eq!(read_issue.verfiy_kvhead().is_ok(), true);
-
-        let serialized = serde_json::to_string(&read_issue).unwrap();
-
-        let deserialized: IssueQuotaRequestWrapper = serde_json::from_str(&serialized).unwrap();
-
-        assert_eq!(deserialized.verfiy_kvhead().is_ok(), true);
-        assert_eq!(
-            deserialized.get_body().get_issue_id(),
-            issue_quota.get_body().get_issue_id()
-        );
-        assert_eq!(
-            serde_json::to_string(&issue_quota.get_body().get_delivery_system()).unwrap(),
-            serde_json::to_string(deserialized.get_body().get_delivery_system()).unwrap()
-        );
-
-        assert_eq!(3, deserialized.get_body().get_issue_info().len());
-        assert_eq!(
-            &(10u64, 5u64),
-            deserialized.get_body().get_issue_info().get(0).unwrap()
-        );
-        assert_eq!(
-            &(50u64, 2u64),
-            deserialized.get_body().get_issue_info().get(1).unwrap()
-        );
-        assert_eq!(
-            &(100u64, 1u64),
-            deserialized.get_body().get_issue_info().get(2).unwrap()
-        );
-    }
-
-    #[test]
-    fn test_issue_quota() {
-        use super::super::quota_control_field::QuotaControlFieldWrapper;
-        use super::IssueQuotaRequest;
-        use asymmetric_crypto::prelude::Keypair;
-        use dislog_hal::Bytes;
-        use kv_object::kv_object::MsgType;
-        use kv_object::prelude::KValueObject;
-        use kv_object::sm2::KeyPairSm2;
-
-        // 中心管理系统
-        let keypair_cms: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-            3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-            33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
-        ])
-        .unwrap();
-
-        // 货币发行系统
-        let keypair_dcds: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-            3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-            33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
-        ])
-        .unwrap();
-
-        let mut issue_info = Vec::<(u64, u64)>::new();
-        issue_info.push((10, 5));
-        issue_info.push((50, 2));
-        issue_info.push((100, 1));
-
-        let issue_quota_request =
-            IssueQuotaRequest::new(issue_info, keypair_dcds.get_certificate());
-        let quotas = issue_quota_request.quota_distribution();
-
-        assert_eq!(8, quotas.len());
-
-        for (index, quota) in quotas.iter().enumerate() {
-            let mut quota_control_field =
-                QuotaControlFieldWrapper::new(MsgType::QuotaControlField, quota.clone());
-
-            assert_eq!(
-                match index {
-                    0 | 1 | 2 | 3 | 4 => 10,
-                    5 | 6 => 50,
-                    7 => 100,
-                    _ => panic!("error value"),
-                },
-                quota_control_field.get_body().get_value()
-            );
-
-            quota_control_field.fill_kvhead(&keypair_cms).unwrap();
-            let sign_bytes = quota_control_field.to_bytes();
-
-            let read_quota = QuotaControlFieldWrapper::from_bytes(&sign_bytes).unwrap();
-            assert_eq!(read_quota.verfiy_kvhead().is_ok(), true);
-
-            let serialized = serde_json::to_string(&read_quota).unwrap();
-
-            let deserialized: QuotaControlFieldWrapper = serde_json::from_str(&serialized).unwrap();
-            assert_eq!(
-                quota_control_field.get_body().get_id(),
-                deserialized.get_body().get_id()
-            );
-            assert_eq!(
-                quota_control_field.get_body().get_timestamp(),
-                deserialized.get_body().get_timestamp()
-            );
-            assert_eq!(
-                quota_control_field.get_body().get_value(),
-                deserialized.get_body().get_value()
-            );
-            assert_eq!(
-                serde_json::to_string(&quota_control_field.get_body().get_delivery_system())
-                    .unwrap(),
-                serde_json::to_string(deserialized.get_body().get_delivery_system()).unwrap()
-            );
-            assert_eq!(
-                quota_control_field.get_body().get_trade_hash(),
-                deserialized.get_body().get_trade_hash()
-            );
-        }
-    }
-}

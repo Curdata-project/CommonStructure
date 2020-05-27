@@ -1,6 +1,8 @@
 use super::quota_control_field::QuotaControlFieldWrapper;
+use alloc::collections::btree_map::BTreeMap;
+use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{ByteOrder, LittleEndian};
 use chrono::prelude::Local;
 use dislog_hal::Bytes;
 use dislog_hal::Hasher;
@@ -10,8 +12,6 @@ use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::io::Cursor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuotaRecycleReceipt {
@@ -90,13 +90,6 @@ impl QuotaRecycleReceipt {
             recycle_info.push((value, amount));
         }
 
-        let mut recycle_info_b = Vec::<u8>::new();
-
-        for each in recycle_info.iter() {
-            recycle_info_b.write_u64::<LittleEndian>(each.0).unwrap();
-            recycle_info_b.write_u64::<LittleEndian>(each.1).unwrap();
-        }
-
         Ok(Self::new(recycle_info, delivery_system))
     }
 }
@@ -110,12 +103,14 @@ impl Bytes for QuotaRecycleReceipt {
         if bytes.len() < 36 {
             return Err(KVObjectError::ValueValid);
         }
+        let mut read_offset: usize = 0;
 
         let mut recycle_id = [0u8; 32];
         recycle_id.clone_from_slice(&bytes[0..QuotaRecycleReceipt::RECYCLE_INFO_OFFSET]);
+        read_offset += QuotaRecycleReceipt::RECYCLE_INFO_OFFSET;
 
-        let mut c = Cursor::new(&bytes[QuotaRecycleReceipt::RECYCLE_INFO_OFFSET..]);
-        let issue_len = c.read_u32::<LittleEndian>().unwrap();
+        let issue_len = LittleEndian::read_u32(&bytes[read_offset..read_offset + 4]);
+        read_offset += 4;
 
         if bytes.len() != (32 + 4 + issue_len * 16 + 33) as usize {
             return Err(KVObjectError::ValueValid);
@@ -123,8 +118,10 @@ impl Bytes for QuotaRecycleReceipt {
 
         let mut recycle_info = Vec::<(u64, u64)>::new();
         for _ in 0..issue_len {
-            let value = c.read_u64::<LittleEndian>().unwrap();
-            let amount = c.read_u64::<LittleEndian>().unwrap();
+            let value = LittleEndian::read_u64(&bytes[read_offset..read_offset + 8]);
+            let amount = LittleEndian::read_u64(&bytes[read_offset + 8..read_offset + 16]);
+
+            read_offset += 16;
             recycle_info.push((value, amount));
         }
 
@@ -144,14 +141,19 @@ impl Bytes for QuotaRecycleReceipt {
 
     fn to_bytes(&self) -> Self::BytesType {
         let mut ret = Vec::<u8>::new();
+        let mut buf_32 = [0; 4];
+        let mut buf_64 = [0; 8];
 
         ret.extend_from_slice(&self.recycle_id[..]);
 
-        ret.write_u32::<LittleEndian>(self.recycle_info.len() as u32)
-            .unwrap();
+        LittleEndian::write_u32(&mut buf_32, self.recycle_info.len() as u32);
+        ret.extend_from_slice(&buf_32);
+
         for each in self.recycle_info.iter() {
-            ret.write_u64::<LittleEndian>(each.0).unwrap();
-            ret.write_u64::<LittleEndian>(each.1).unwrap();
+            LittleEndian::write_u64(&mut buf_64, each.0);
+            ret.extend_from_slice(&buf_64);
+            LittleEndian::write_u64(&mut buf_64, each.1);
+            ret.extend_from_slice(&buf_64);
         }
 
         ret.extend_from_slice(self.delivery_system.to_bytes().as_ref());
@@ -177,88 +179,3 @@ impl AttrProxy for QuotaRecycleReceipt {
 impl KVBody for QuotaRecycleReceipt {}
 
 pub type QuotaRecycleReceiptWrapper = KVObject<QuotaRecycleReceipt>;
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_recycle_receipt() {
-        use super::super::issue_quota_request::IssueQuotaRequest;
-        use super::super::quota_control_field::QuotaControlFieldWrapper;
-        use super::{QuotaRecycleReceipt, QuotaRecycleReceiptWrapper};
-        use asymmetric_crypto::prelude::Keypair;
-        use dislog_hal::Bytes;
-        use kv_object::kv_object::MsgType;
-        use kv_object::prelude::KValueObject;
-        use kv_object::sm2::KeyPairSm2;
-
-        let keypair_sm2: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-            3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-            33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
-        ])
-        .unwrap();
-
-        let mut recycle_info = Vec::<(u64, u64)>::new();
-        recycle_info.push((10, 5));
-        recycle_info.push((50, 2));
-        recycle_info.push((100, 1));
-
-        // 发行请求
-        let issue = IssueQuotaRequest::new(recycle_info, keypair_sm2.get_certificate());
-        // 额度分发
-        let quotas = issue.quota_distribution();
-
-        let mut need_recycles = Vec::<QuotaControlFieldWrapper>::new();
-        for each_quota in quotas.iter() {
-            let mut quota_control_field =
-                QuotaControlFieldWrapper::new(MsgType::QuotaControlField, each_quota.clone());
-
-            quota_control_field.fill_kvhead(&keypair_sm2).unwrap();
-
-            let sign_byte = quota_control_field.to_bytes();
-
-            let read_quota = QuotaControlFieldWrapper::from_bytes(&sign_byte).unwrap();
-            need_recycles.push(read_quota);
-        }
-        let recycle_receipt =
-            QuotaRecycleReceipt::recycle(&need_recycles, keypair_sm2.get_certificate()).unwrap();
-
-        let mut recycle_receipt =
-            QuotaRecycleReceiptWrapper::new(MsgType::QuotaRecycleReceipt, recycle_receipt);
-
-        recycle_receipt.fill_kvhead(&keypair_sm2).unwrap();
-
-        let sign_byte = recycle_receipt.to_bytes();
-
-        let read_recycle_receipt = QuotaRecycleReceiptWrapper::from_bytes(&sign_byte).unwrap();
-
-        assert_eq!(read_recycle_receipt.verfiy_kvhead().is_ok(), true);
-
-        let serialized = serde_json::to_string(&read_recycle_receipt).unwrap();
-
-        let deserialized: QuotaRecycleReceiptWrapper = serde_json::from_str(&serialized).unwrap();
-
-        assert_eq!(
-            recycle_receipt.get_body().get_recycle_id(),
-            deserialized.get_body().get_recycle_id()
-        );
-        assert_eq!(
-            serde_json::to_string(&recycle_receipt.get_body().get_delivery_system()).unwrap(),
-            serde_json::to_string(deserialized.get_body().get_delivery_system()).unwrap()
-        );
-
-        assert_eq!(3, deserialized.get_body().get_recycle_info().len());
-        assert_eq!(
-            &(10u64, 5u64),
-            deserialized.get_body().get_recycle_info().get(0).unwrap()
-        );
-        assert_eq!(
-            &(50u64, 2u64),
-            deserialized.get_body().get_recycle_info().get(1).unwrap()
-        );
-        assert_eq!(
-            &(100u64, 1u64),
-            deserialized.get_body().get_recycle_info().get(2).unwrap()
-        );
-    }
-}
