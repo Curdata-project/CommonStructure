@@ -1,11 +1,11 @@
 use super::quota_control_field::{QuotaControlField, QuotaControlFieldWrapper};
+use alloc::vec::Vec;
 use dislog_hal::Bytes;
 use kv_object::kv_object::{KVBody, KVObject};
 use kv_object::prelude::AttrProxy;
 use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
 use serde::{Deserialize, Serialize};
-use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DigitalCurrency {

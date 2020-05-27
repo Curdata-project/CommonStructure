@@ -1,6 +1,7 @@
 use super::quota_control_field::QuotaControlField;
+use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
-use byteorder::{LittleEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian};
 use chrono::prelude::Local;
 use core::convert::AsRef;
 use dislog_hal::Bytes;
@@ -11,7 +12,6 @@ use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IssueQuotaRequest {
@@ -121,7 +121,6 @@ impl Bytes for IssueQuotaRequest {
         issue_id.clone_from_slice(&bytes[0..IssueQuotaRequest::ISSUE_INFO_OFFSET]);
         read_offset += IssueQuotaRequest::ISSUE_INFO_OFFSET;
 
-        
         let issue_len = LittleEndian::read_u32(&bytes[read_offset..read_offset + 4]);
         read_offset += 4;
 
@@ -161,7 +160,7 @@ impl Bytes for IssueQuotaRequest {
 
         LittleEndian::write_u32(&mut buf_32, self.issue_info.len() as u32);
         ret.extend_from_slice(&buf_32);
-        
+
         for each in self.issue_info.iter() {
             LittleEndian::write_u64(&mut buf_64, each.0);
             ret.extend_from_slice(&buf_64);

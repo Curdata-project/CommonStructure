@@ -113,10 +113,8 @@ impl Output {
     /// If the command has a non-zero exit code, then this function panics.
     fn new(cmd: &mut Command, child: process::Child) -> Output {
         let out = child.wait_with_output().expect("command runs successfully");
-        let stdout =
-            String::from_utf8(out.stdout).expect("valid utf-8 (stdout)");
-        let stderr =
-            String::from_utf8(out.stderr).expect("valid utf-8 (stderr)");
+        let stdout = String::from_utf8(out.stdout).expect("valid utf-8 (stdout)");
+        let stderr = String::from_utf8(out.stderr).expect("valid utf-8 (stderr)");
         Output {
             stdout: stdout,
             stderr: stderr,

@@ -1,23 +1,23 @@
-extern crate common_structure;
 extern crate alloc;
+extern crate common_structure;
 
+use alloc::vec::Vec;
+use asymmetric_crypto::prelude::Keypair;
 use common_structure::issue_quota_request::IssueQuotaRequest;
 use common_structure::quota_control_field::QuotaControlFieldWrapper;
 use common_structure::quota_recycle_receipt::{QuotaRecycleReceipt, QuotaRecycleReceiptWrapper};
-use asymmetric_crypto::prelude::Keypair;
 use dislog_hal::Bytes;
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::KeyPairSm2;
-use alloc::vec::Vec;
 use rand::thread_rng;
 
 fn main() {
     let mut rng = thread_rng();
 
     let keypair_sm2: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-        33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
+        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241, 33,
+        154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
     ])
     .unwrap();
 
@@ -36,7 +36,9 @@ fn main() {
         let mut quota_control_field =
             QuotaControlFieldWrapper::new(MsgType::QuotaControlField, each_quota.clone());
 
-        quota_control_field.fill_kvhead(&keypair_sm2, &mut rng).unwrap();
+        quota_control_field
+            .fill_kvhead(&keypair_sm2, &mut rng)
+            .unwrap();
 
         let sign_byte = quota_control_field.to_bytes();
 

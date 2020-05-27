@@ -1,31 +1,30 @@
-extern crate common_structure;
 extern crate alloc;
+extern crate common_structure;
 
-use common_structure::quota_control_field::QuotaControlFieldWrapper;
-use common_structure::issue_quota_request::IssueQuotaRequest;
+use alloc::vec::Vec;
 use asymmetric_crypto::prelude::Keypair;
+use common_structure::issue_quota_request::IssueQuotaRequest;
+use common_structure::quota_control_field::QuotaControlFieldWrapper;
 use dislog_hal::Bytes;
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::KeyPairSm2;
-use alloc::vec::Vec;
 use rand::thread_rng;
-
 
 fn main() {
     let mut rng = thread_rng();
 
     // 中心管理系统
     let keypair_cms: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-        33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
+        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241, 33,
+        154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
     ])
     .unwrap();
 
     // 货币发行系统
     let keypair_dcds: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241,
-        33, 154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
+        3, 215, 135, 141, 4, 220, 160, 132, 203, 82, 177, 17, 56, 137, 46, 25, 163, 13, 241, 33,
+        154, 195, 196, 125, 33, 85, 57, 121, 110, 79, 202, 249,
     ])
     .unwrap();
 
@@ -34,8 +33,7 @@ fn main() {
     issue_info.push((50, 2));
     issue_info.push((100, 1));
 
-    let issue_quota_request =
-        IssueQuotaRequest::new(issue_info, keypair_dcds.get_certificate());
+    let issue_quota_request = IssueQuotaRequest::new(issue_info, keypair_dcds.get_certificate());
     let quotas = issue_quota_request.quota_distribution();
 
     assert_eq!(8, quotas.len());
@@ -54,7 +52,9 @@ fn main() {
             quota_control_field.get_body().get_value()
         );
 
-        quota_control_field.fill_kvhead(&keypair_cms, &mut rng).unwrap();
+        quota_control_field
+            .fill_kvhead(&keypair_cms, &mut rng)
+            .unwrap();
         let sign_bytes = quota_control_field.to_bytes();
 
         let read_quota = QuotaControlFieldWrapper::from_bytes(&sign_bytes).unwrap();
@@ -76,8 +76,7 @@ fn main() {
             deserialized.get_body().get_value()
         );
         assert_eq!(
-            serde_json::to_string(&quota_control_field.get_body().get_delivery_system())
-                .unwrap(),
+            serde_json::to_string(&quota_control_field.get_body().get_delivery_system()).unwrap(),
             serde_json::to_string(deserialized.get_body().get_delivery_system()).unwrap()
         );
         assert_eq!(

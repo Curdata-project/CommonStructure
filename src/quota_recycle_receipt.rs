@@ -1,6 +1,8 @@
 use super::quota_control_field::QuotaControlFieldWrapper;
+use alloc::collections::btree_map::BTreeMap;
+use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
-use byteorder::{LittleEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian};
 use chrono::prelude::Local;
 use dislog_hal::Bytes;
 use dislog_hal::Hasher;
@@ -10,8 +12,6 @@ use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use alloc::collections::btree_map::BTreeMap;
-use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuotaRecycleReceipt {
@@ -148,7 +148,7 @@ impl Bytes for QuotaRecycleReceipt {
 
         LittleEndian::write_u32(&mut buf_32, self.recycle_info.len() as u32);
         ret.extend_from_slice(&buf_32);
-        
+
         for each in self.recycle_info.iter() {
             LittleEndian::write_u64(&mut buf_64, each.0);
             ret.extend_from_slice(&buf_64);
