@@ -1,4 +1,5 @@
 use super::quota_control_field::QuotaControlField;
+use crate::get_rng_core;
 use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
 use byteorder::{ByteOrder, LittleEndian};
@@ -29,7 +30,7 @@ impl IssueQuotaRequest {
     pub const ISSUE_INFO_OFFSET: usize = 32;
 
     pub fn new(issue_info: Vec<(u64, u64)>, delivery_system: CertificateSm2) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
 
@@ -70,7 +71,7 @@ impl IssueQuotaRequest {
     pub fn quota_distribution(&self) -> Vec<QuotaControlField> {
         let mut ret = Vec::<QuotaControlField>::new();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
         hasher.update(&self.to_bytes()[..]);

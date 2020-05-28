@@ -1,4 +1,5 @@
 use super::quota_control_field::{QuotaControlField, QuotaControlFieldWrapper};
+use crate::get_rng_core;
 use crate::QuotaError;
 use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
@@ -36,7 +37,7 @@ impl ConvertQoutaRequest {
         outputs: Vec<(u64, u64)>,
         delivery_system: CertificateSm2,
     ) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
 
@@ -108,7 +109,7 @@ impl ConvertQoutaRequest {
         // 开始生成新额度控制位
         let mut ret = Vec::<QuotaControlField>::new();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
         hasher.update(&self.to_bytes()[..]);
