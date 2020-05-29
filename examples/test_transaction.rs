@@ -35,8 +35,8 @@ fn main() {
 
     // 钱包，新的所有者
     let wallet_keypair_sm2_2: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-        111,  215, 135, 141, 4, 220, 33, 154, 195, 196, 125, 33, 85, 57, 121, 56, 79, 202, 249, 3,
-         241, 160, 132, 203, 82, 177, 17,137, 46, 25, 163, 13,
+        111, 215, 135, 141, 4, 220, 33, 154, 195, 196, 125, 33, 85, 57, 121, 56, 79, 202, 249, 3,
+        241, 160, 132, 203, 82, 177, 17, 137, 46, 25, 163, 13,
     ])
     .unwrap();
     let wallet_cert_2 = wallet_keypair_sm2_2.get_certificate();
@@ -101,7 +101,10 @@ fn main() {
         serde_json::to_string(deserialized.get_body().get_target()).unwrap()
     );
     // dcds转移货币所有权
-    let currency = deserialized.get_body().trans_currency(&keypair_dcds).unwrap();
+    let currency = deserialized
+        .get_body()
+        .trans_currency(&keypair_dcds)
+        .unwrap();
 
     assert_eq!(
         10000,
@@ -111,7 +114,14 @@ fn main() {
     // 转移前所有者
     assert_eq!(
         "\"03659AE6AFD520C54C48E58E96378B181ACD4CD14A096150281696F641A145864C\"",
-        serde_json::to_string(deserialized.get_body().get_currency().get_body().get_wallet_cert()).unwrap()
+        serde_json::to_string(
+            deserialized
+                .get_body()
+                .get_currency()
+                .get_body()
+                .get_wallet_cert()
+        )
+        .unwrap()
     );
 
     assert_eq!(

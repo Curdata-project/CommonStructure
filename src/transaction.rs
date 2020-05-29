@@ -7,11 +7,11 @@ use dislog_hal::Bytes;
 use dislog_hal::Hasher;
 use kv_object::kv_object::{KVBody, KVObject, MsgType};
 use kv_object::prelude::AttrProxy;
+use kv_object::prelude::KValueObject;
 use kv_object::sm2::{CertificateSm2, KeyPairSm2};
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use kv_object::prelude::KValueObject;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
@@ -64,9 +64,14 @@ impl Transaction {
     /// 返回新生成的货币
     pub fn trans_currency(&self, keypair: &KeyPairSm2) -> Result<DigitalCurrencyWrapper, ()> {
         let quota_control_field = self.currency.get_body().get_quota_info();
-        let mut new_currency = DigitalCurrencyWrapper::new(MsgType::DigitalCurrency, DigitalCurrency::new(quota_control_field.clone(), self.target.clone()));
-        
-        new_currency.fill_kvhead(keypair, &mut get_rng_core()).map_err(|_| ())?;
+        let mut new_currency = DigitalCurrencyWrapper::new(
+            MsgType::DigitalCurrency,
+            DigitalCurrency::new(quota_control_field.clone(), self.target.clone()),
+        );
+
+        new_currency
+            .fill_kvhead(keypair, &mut get_rng_core())
+            .map_err(|_| ())?;
         Ok(new_currency)
     }
 }
@@ -94,9 +99,9 @@ impl Bytes for Transaction {
 
         // 读取currency
         let currency = DigitalCurrencyWrapper::from_bytes(
-                &bytes[reads_len..reads_len + DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD],
-            )
-            .map_err(|_| return KVObjectError::DeSerializeError)?;
+            &bytes[reads_len..reads_len + DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD],
+        )
+        .map_err(|_| return KVObjectError::DeSerializeError)?;
 
         Ok(Self {
             txid,

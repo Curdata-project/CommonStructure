@@ -10,7 +10,6 @@ pub mod quota_control_field;
 pub mod quota_recycle_receipt;
 pub mod transaction;
 
-
 pub enum QuotaError {
     QuotaConvertValidError,
     QuotaConvertSumError,
