@@ -33,10 +33,18 @@ fn main() {
     .unwrap();
     let wallet_cert = wallet_keypair_sm2.get_certificate();
 
+    // 钱包，新的所有者
+    let wallet_keypair_sm2_2: KeyPairSm2 = KeyPairSm2::generate_from_seed([
+        111,  215, 135, 141, 4, 220, 33, 154, 195, 196, 125, 33, 85, 57, 121, 56, 79, 202, 249, 3,
+         241, 160, 132, 203, 82, 177, 17,137, 46, 25, 163, 13,
+    ])
+    .unwrap();
+    let wallet_cert_2 = wallet_keypair_sm2_2.get_certificate();
+
     let mut issue_info = Vec::<(u64, u64)>::new();
-    issue_info.push((1000, 5));
-    issue_info.push((5000, 2));
     issue_info.push((10000, 1));
+    issue_info.push((5000, 2));
+    issue_info.push((1000, 5));
 
     let issue = IssueQuotaRequest::new(issue_info, cert_dcds);
     let quotas = issue.quota_distribution();
@@ -67,9 +75,10 @@ fn main() {
 
     let mut transaction_ok_1 = TransactionWrapper::new(
         MsgType::Transaction,
-        Transaction::new(wallet_cert.clone(), pay_currency.clone()),
+        Transaction::new(wallet_cert_2.clone(), pay_currency.get(0).unwrap().clone()),
     );
 
+    // 支付者签名
     transaction_ok_1
         .fill_kvhead(&wallet_keypair_sm2, &mut rng)
         .unwrap();
@@ -91,22 +100,30 @@ fn main() {
         serde_json::to_string(&transaction_ok_1.get_body().get_target()).unwrap(),
         serde_json::to_string(deserialized.get_body().get_target()).unwrap()
     );
+    // dcds转移货币所有权
+    let currency = deserialized.get_body().trans_currency(&keypair_dcds).unwrap();
 
-    let currencys = deserialized.get_body().get_currencys();
+    assert_eq!(
+        10000,
+        currency.get_body().get_quota_info().get_body().get_value()
+    );
 
-    assert_eq!(8, currencys.len());
+    // 转移前所有者
+    assert_eq!(
+        "\"03659AE6AFD520C54C48E58E96378B181ACD4CD14A096150281696F641A145864C\"",
+        serde_json::to_string(deserialized.get_body().get_currency().get_body().get_wallet_cert()).unwrap()
+    );
 
-    for (index, currency) in currencys.iter().enumerate() {
-        assert_eq!(
-            match index {
-                0 | 1 | 2 | 3 | 4 => 1000,
-                5 | 6 => 5000,
-                7 => 10000,
-                _ => panic!("error value"),
-            },
-            currency.get_body().get_quota_info().get_body().get_value()
-        );
-    }
+    assert_eq!(
+        "\"0366AD51A3BF44EE15F4C8B278B0B695A3BFC2C56602CB647CDD77867A8AE92019\"",
+        serde_json::to_string(deserialized.get_body().get_target()).unwrap()
+    );
+
+    // 当前所有者
+    assert_eq!(
+        "\"0366AD51A3BF44EE15F4C8B278B0B695A3BFC2C56602CB647CDD77867A8AE92019\"",
+        serde_json::to_string(currency.get_body().get_wallet_cert()).unwrap()
+    );
 
     assert_eq!(
         *CURRENCY_VALUE,

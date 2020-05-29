@@ -2,35 +2,33 @@ use super::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use crate::get_rng_core;
 use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
-use byteorder::{ByteOrder, LittleEndian};
 use chrono::prelude::Local;
 use dislog_hal::Bytes;
 use dislog_hal::Hasher;
-use kv_object::kv_object::{KVBody, KVObject};
+use kv_object::kv_object::{KVBody, KVObject, MsgType};
 use kv_object::prelude::AttrProxy;
-use kv_object::sm2::CertificateSm2;
+use kv_object::sm2::{CertificateSm2, KeyPairSm2};
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use kv_object::prelude::KValueObject;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     /// 交易ID Hash [ 支付货币列表 | 目标钱包公钥 | 时间戳 | 随机值 ]
     txid: [u8; 32],
-    /// 目标钱包公钥
+    /// 目标钱包证书
     target: CertificateSm2,
     /// 支付货币列表
-    currencys: Vec<DigitalCurrencyWrapper>,
+    currency: DigitalCurrencyWrapper,
 }
 
 impl Transaction {
-    pub fn new(target: CertificateSm2, currencys: Vec<DigitalCurrencyWrapper>) -> Self {
+    pub fn new(target: CertificateSm2, currency: DigitalCurrencyWrapper) -> Self {
         let mut rng = get_rng_core();
         let mut hasher = Sm3::default();
 
-        for each in currencys.iter() {
-            hasher.update(each.to_bytes());
-        }
+        hasher.update(currency.to_bytes());
 
         hasher.update(target.to_bytes().as_ref());
 
@@ -46,7 +44,7 @@ impl Transaction {
         Self {
             txid,
             target,
-            currencys,
+            currency,
         }
     }
 
@@ -58,8 +56,18 @@ impl Transaction {
         &self.target
     }
 
-    pub fn get_currencys(&self) -> &Vec<DigitalCurrencyWrapper> {
-        &self.currencys
+    pub fn get_currency(&self) -> &DigitalCurrencyWrapper {
+        &self.currency
+    }
+
+    /// 传入外部dcds的keypair，为货币所有权转移做签名
+    /// 返回新生成的货币
+    pub fn trans_currency(&self, keypair: &KeyPairSm2) -> Result<DigitalCurrencyWrapper, ()> {
+        let quota_control_field = self.currency.get_body().get_quota_info();
+        let mut new_currency = DigitalCurrencyWrapper::new(MsgType::DigitalCurrency, DigitalCurrency::new(quota_control_field.clone(), self.target.clone()));
+        
+        new_currency.fill_kvhead(keypair, &mut get_rng_core()).map_err(|_| ())?;
+        Ok(new_currency)
     }
 }
 
@@ -69,7 +77,7 @@ impl Bytes for Transaction {
     type Error = KVObjectError;
 
     fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() < 32 + 33 + 4 {
+        if bytes.len() < 32 + 33 + DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD {
             return Err(KVObjectError::ValueValid);
         }
         let mut reads_len: usize = 0;
@@ -84,35 +92,21 @@ impl Bytes for Transaction {
             .map_err(|_| return KVObjectError::DeSerializeError)?;
         reads_len += 33;
 
-        // 读取currencys
-        let currencys_len = LittleEndian::read_u32(&bytes[reads_len..reads_len + 4]) as usize;
-        if bytes.len() < reads_len + 4 + currencys_len * DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD {
-            return Err(KVObjectError::ValueValid);
-        }
-
-        let mut currencys = Vec::<DigitalCurrencyWrapper>::new();
-        for i in 0..currencys_len {
-            let offset = reads_len + 4 + i * DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD;
-            let currency = DigitalCurrencyWrapper::from_bytes(
-                &bytes[offset..offset + DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD],
+        // 读取currency
+        let currency = DigitalCurrencyWrapper::from_bytes(
+                &bytes[reads_len..reads_len + DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD],
             )
             .map_err(|_| return KVObjectError::DeSerializeError)?;
-
-            currencys.push(currency);
-        }
-        // unused
-        //reads_len += 4 + currencys_len * DigitalCurrency::CURRENCY_LEN_WITH_KVHEAD;
 
         Ok(Self {
             txid,
             target,
-            currencys,
+            currency,
         })
     }
 
     fn to_bytes(&self) -> Self::BytesType {
         let mut ret = Vec::<u8>::new();
-        let mut buf_32 = [0; 4];
 
         // 写入txid
         ret.extend_from_slice(&self.txid[..]);
@@ -120,12 +114,8 @@ impl Bytes for Transaction {
         // 写入target
         ret.extend_from_slice(self.target.to_bytes().as_ref());
 
-        // 写入currencys
-        LittleEndian::write_u32(&mut buf_32, self.currencys.len() as u32);
-        ret.extend_from_slice(&buf_32);
-        for each in self.currencys.iter() {
-            ret.extend_from_slice(each.to_bytes().as_ref());
-        }
+        // 写入currency
+        ret.extend_from_slice(self.currency.to_bytes().as_ref());
 
         ret
     }

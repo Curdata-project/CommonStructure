@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct DigitalCurrency {
     /// 数字货币额度控制位
     quota_info: QuotaControlFieldWrapper,
-    /// 钱包公钥
+    /// 钱包证书
     wallet_cert: CertificateSm2,
 }
 
