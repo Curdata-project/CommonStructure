@@ -1,7 +1,7 @@
 use super::quota_control_field::{QuotaControlField, QuotaControlFieldWrapper};
 use alloc::vec::Vec;
 use dislog_hal::Bytes;
-use kv_object::kv_object::{KVBody, KVObject};
+use kv_object::kv_object::{KVBody, KVObject, HEAD_TOTAL_LEN};
 use kv_object::prelude::AttrProxy;
 use kv_object::sm2::CertificateSm2;
 use kv_object::KVObjectError;
@@ -11,12 +11,13 @@ use serde::{Deserialize, Serialize};
 pub struct DigitalCurrency {
     /// 数字货币额度控制位
     quota_info: QuotaControlFieldWrapper,
-    /// 钱包公钥
+    /// 钱包证书
     wallet_cert: CertificateSm2,
 }
 
 impl DigitalCurrency {
     pub const CURRENCY_LEN: usize = QuotaControlField::QUOTA_LEN_WITH_KVHEAD + 33;
+    pub const CURRENCY_LEN_WITH_KVHEAD: usize = DigitalCurrency::CURRENCY_LEN + HEAD_TOTAL_LEN;
 
     pub fn new(quota_control_field: QuotaControlFieldWrapper, cert: CertificateSm2) -> Self {
         Self {

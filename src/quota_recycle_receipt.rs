@@ -1,4 +1,5 @@
 use super::quota_control_field::QuotaControlFieldWrapper;
+use crate::get_rng_core;
 use alloc::collections::btree_map::BTreeMap;
 use alloc::vec::Vec;
 use asymmetric_crypto::hasher::sm3::Sm3;
@@ -29,7 +30,7 @@ impl QuotaRecycleReceipt {
     pub const RECYCLE_INFO_OFFSET: usize = 32;
 
     fn new(recycle_info: Vec<(u64, u64)>, delivery_system: CertificateSm2) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
 

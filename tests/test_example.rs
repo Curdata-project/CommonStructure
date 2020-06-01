@@ -40,6 +40,20 @@ fn test_convert_quota() {
     let _: String = out.stdout().to_string();
 }
 
+#[test]
+fn test_transaction() {
+    let mut cmd = cmd_for_example("test_transaction");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_currency_convert() {
+    let mut cmd = cmd_for_example("test_currency_convert");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
 // Helper functions follow.
 
 /// Return the target/debug directory path.
