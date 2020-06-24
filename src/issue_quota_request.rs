@@ -77,6 +77,8 @@ impl IssueQuotaRequest {
         hasher.update(&self.to_bytes()[..]);
         let trade_hash = hasher.finalize();
         for (value, amount) in self.issue_info.iter() {
+            log::info!("开始生成面额{}的货币{}张", value, amount);
+
             let now = Local::now();
             let timestamp = now.timestamp_millis();
 
