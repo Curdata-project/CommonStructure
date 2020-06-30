@@ -24,12 +24,35 @@ use alloc::vec;
 use alloc::vec::Vec;
 use lazy_static::*;
 
-lazy_static! {
-    /// 100元，50元，20元，10元，5元，2元，1元，5角，1角
-    pub static ref CURRENCY_VALUE: Vec::<u64> = vec![10000, 5000, 2000, 1000, 500, 200, 100, 50, 10];
+use rand::Error;
+use rand::RngCore;
+use getrandom::getrandom;
+
+pub fn get_rng_core() -> impl RngCore + Send {
+    GetRandomRng{}
 }
 
-use rand::RngCore;
-pub fn get_rng_core() -> impl RngCore {
-    rand::thread_rng()
+#[derive(Default)]
+struct GetRandomRng{}
+
+impl RngCore for GetRandomRng {
+    fn next_u32(&mut self) -> u32 {
+        let mut tmp = [0u8; 4];
+        getrandom(&mut tmp).unwrap();
+        u32::from_le_bytes(tmp)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut tmp = [0u8; 8];
+        getrandom(&mut tmp).unwrap();
+        u64::from_le_bytes(tmp)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        getrandom(dest).unwrap();
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+        Ok(self.fill_bytes(dest))
+    }
 }

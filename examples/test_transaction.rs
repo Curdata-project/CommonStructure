@@ -7,7 +7,6 @@ use common_structure::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper
 use common_structure::issue_quota_request::IssueQuotaRequest;
 use common_structure::quota_control_field::QuotaControlFieldWrapper;
 use common_structure::transaction::{Transaction, TransactionWrapper};
-use common_structure::CURRENCY_VALUE;
 use dislog_hal::Bytes;
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
@@ -133,10 +132,5 @@ fn main() {
     assert_eq!(
         "\"0366AD51A3BF44EE15F4C8B278B0B695A3BFC2C56602CB647CDD77867A8AE92019\"",
         serde_json::to_string(currency.get_body().get_wallet_cert()).unwrap()
-    );
-
-    assert_eq!(
-        *CURRENCY_VALUE,
-        [10000, 5000, 2000, 1000, 500, 200, 100, 50, 10]
     );
 }
