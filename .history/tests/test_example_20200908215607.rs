@@ -5,6 +5,54 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{self, Command};
 
+#[test]
+fn test_issue_quota() {
+    let mut cmd = cmd_for_example("test_issue_quota");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_quota_distribution() {
+    let mut cmd = cmd_for_example("test_quota_distribution");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_currency() {
+    let mut cmd = cmd_for_example("test_currency");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_recycle_quota() {
+    let mut cmd = cmd_for_example("test_recycle_quota");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_convert_quota() {
+    let mut cmd = cmd_for_example("test_convert_quota");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_transaction() {
+    let mut cmd = cmd_for_example("test_transaction");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_currency_convert() {
+    let mut cmd = cmd_for_example("test_currency_convert");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
 
 // Helper functions follow.
 
