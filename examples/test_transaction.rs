@@ -40,8 +40,8 @@ fn main() {
 
     // 钱包C
     let wallet_keypair_c: KeyPairSm2 = KeyPairSm2::generate_from_seed([
-        46, 25, 163, 13, 241, 160, 135, 141, 4, 220, 33, 154, 195, 196, 125, 33, 85, 57, 121, 56,
-        137, 132, 203, 82, 110, 79, 202, 249, 3, 215, 177, 17,
+        203, 82, 110, 13, 241, 160, 135, 141, 4, 220, 33, 154, 195, 196, 125, 33, 85, 57, 121, 56,
+        137, 132, 46, 25, 163, 79, 202, 249, 3, 215, 177, 17,
     ])
     .unwrap();
     let wallet_cert_c = wallet_keypair_c.get_certificate();
@@ -49,7 +49,7 @@ fn main() {
     let mut currency_1 = DigitalCurrencyWrapper::new(
         MsgType::DigitalCurrency,
         DigitalCurrency::new(
-            wallet_cert_a,
+            wallet_cert_a.clone(),
             10000,
             cert_dcds.clone(),
             Vec::<u8>::new(),
@@ -62,7 +62,7 @@ fn main() {
     let mut currency_2 = DigitalCurrencyWrapper::new(
         MsgType::DigitalCurrency,
         DigitalCurrency::new(
-            wallet_cert_b,
+            wallet_cert_b.clone(),
             10000,
             cert_dcds,
             Vec::<u8>::new(),
@@ -76,7 +76,7 @@ fn main() {
     inputs.push(currency_1);
     inputs.push(currency_2);
     let mut outputs = Vec::<(CertificateSm2, u64)>::new();
-    outputs.push((wallet_cert_c, 20000));
+    outputs.push((wallet_cert_c.clone(), 20000));
     let mut transaction = Transaction::new(inputs, outputs);
 
     let mut rng = get_rng_core();
@@ -86,7 +86,15 @@ fn main() {
     assert_eq!(transaction.check_sign(), true);
     assert_eq!(transaction.get_inputs().len(), 2);
     assert_eq!(transaction.get_inputs()[0].get_body().get_amount(), 10000);
+    assert_eq!(transaction.get_inputs()[0].get_body().get_owner(), &wallet_cert_a);
     assert_eq!(transaction.get_inputs()[1].get_body().get_amount(), 10000);
+    assert_eq!(transaction.get_inputs()[1].get_body().get_owner(), &wallet_cert_b);
     assert_eq!(transaction.get_outputs().len(), 1);
+    assert_eq!(transaction.get_outputs()[0].0, wallet_cert_c);
     assert_eq!(transaction.get_outputs()[0].1, 20000);
+
+    let new_currencys = transaction.gen_new_currency(&keypair_dcds, &mut rng);
+    assert_eq!(new_currencys.len(), 1);
+    assert_eq!(new_currencys[0].get_body().get_amount(), 20000);
+    assert_eq!(new_currencys[0].get_body().get_owner(), &wallet_cert_c);
 }
