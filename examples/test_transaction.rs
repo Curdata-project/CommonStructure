@@ -86,9 +86,15 @@ fn main() {
     assert_eq!(transaction.check_validated(), true);
     assert_eq!(transaction.get_inputs().len(), 2);
     assert_eq!(transaction.get_inputs()[0].get_body().get_amount(), 10000);
-    assert_eq!(transaction.get_inputs()[0].get_body().get_owner(), &wallet_cert_a);
+    assert_eq!(
+        transaction.get_inputs()[0].get_body().get_owner(),
+        &wallet_cert_a
+    );
     assert_eq!(transaction.get_inputs()[1].get_body().get_amount(), 10000);
-    assert_eq!(transaction.get_inputs()[1].get_body().get_owner(), &wallet_cert_b);
+    assert_eq!(
+        transaction.get_inputs()[1].get_body().get_owner(),
+        &wallet_cert_b
+    );
     assert_eq!(transaction.get_outputs().len(), 1);
     assert_eq!(transaction.get_outputs()[0].0, wallet_cert_c);
     assert_eq!(transaction.get_outputs()[0].1, 20000);

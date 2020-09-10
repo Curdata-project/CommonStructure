@@ -1,18 +1,17 @@
-use crate::digital_currency::{DigitalCurrencyWrapper, DigitalCurrency};
+use crate::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use crate::error::CommStructError;
 use asymmetric_crypto::hasher::sm3::Sm3;
 use asymmetric_crypto::prelude::Certificate;
 use asymmetric_crypto::prelude::Keypair;
 use dislog_hal::Bytes;
+use kv_object::kv_object::MsgType;
 use kv_object::prelude::AttrProxy;
+use kv_object::prelude::KValueObject;
 use kv_object::sm2::{CertificateSm2, KeyPairSm2, SignatureSm2};
 use kv_object::KVObjectError;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use kv_object::kv_object::MsgType;
-use kv_object::prelude::KValueObject;
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TransactionInner {
@@ -106,10 +105,13 @@ impl Transaction {
     /// 生成交易后的货币
     ///     输入dcds的keypair
     ///     输出新生成的货币
-    pub fn gen_new_currency(self, dcds_keypair: &KeyPairSm2, 
-        rng: &mut impl RngCore) -> Vec<DigitalCurrencyWrapper> {
+    pub fn gen_new_currency(
+        self,
+        dcds_keypair: &KeyPairSm2,
+        rng: &mut impl RngCore,
+    ) -> Vec<DigitalCurrencyWrapper> {
         let mut ret = Vec::<DigitalCurrencyWrapper>::new();
-        
+
         let cert_dcds = dcds_keypair.get_certificate();
         for each in &self.inner.outputs {
             let mut new_currency = DigitalCurrencyWrapper::new(
@@ -122,10 +124,8 @@ impl Transaction {
                     Vec::<u8>::new(),
                 ),
             );
-        
-            new_currency
-                .fill_kvhead(&dcds_keypair, rng)
-                .unwrap();
+
+            new_currency.fill_kvhead(&dcds_keypair, rng).unwrap();
 
             ret.push(new_currency);
         }
