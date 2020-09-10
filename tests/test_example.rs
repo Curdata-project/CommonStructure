@@ -5,6 +5,12 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{self, Command};
 
+#[test]
+fn test_issue_quota() {
+    let mut cmd = cmd_for_example("test_currency");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
 
 // Helper functions follow.
 
