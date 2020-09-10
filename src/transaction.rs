@@ -62,7 +62,13 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn check_sign(&self) -> bool {
+    /// 判断交易体是否合法
+    /// 判断依据
+    ///     输入输出金额相等
+    ///     输入有重复
+    ///     输入每张货币所有者都对交易体有对应的签名
+    /// 注： 单张货币合法性不在此判断，可由get_inputs取出另行判断
+    pub fn check_validated(&self) -> bool {
         let mut collision = HashSet::<String>::new();
         let inner_byte = self.inner.to_bytes();
 
@@ -97,6 +103,9 @@ impl Transaction {
         inputs_amount == outputs_amount
     }
 
+    /// 生成交易后的货币
+    ///     输入dcds的keypair
+    ///     输出新生成的货币
     pub fn gen_new_currency(self, dcds_keypair: &KeyPairSm2, 
         rng: &mut impl RngCore) -> Vec<DigitalCurrencyWrapper> {
         let mut ret = Vec::<DigitalCurrencyWrapper>::new();

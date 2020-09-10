@@ -83,7 +83,7 @@ fn main() {
     transaction.fill_sign(&wallet_keypair_b, &mut rng).unwrap();
     transaction.fill_sign(&wallet_keypair_a, &mut rng).unwrap();
 
-    assert_eq!(transaction.check_sign(), true);
+    assert_eq!(transaction.check_validated(), true);
     assert_eq!(transaction.get_inputs().len(), 2);
     assert_eq!(transaction.get_inputs()[0].get_body().get_amount(), 10000);
     assert_eq!(transaction.get_inputs()[0].get_body().get_owner(), &wallet_cert_a);
