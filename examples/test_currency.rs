@@ -3,15 +3,15 @@ extern crate common_structure;
 
 use alloc::vec::Vec;
 use asymmetric_crypto::prelude::Keypair;
+use common_structure::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use dislog_hal::Bytes;
+use hex::{FromHex, ToHex};
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::KeyPairSm2;
-use hex::{FromHex, ToHex};
 use rand::thread_rng;
-use common_structure::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 
-fn main(){
+fn main() {
     let mut rng = thread_rng();
 
     // 发行机构
@@ -32,16 +32,23 @@ fn main(){
 
     let mut digital_currency = DigitalCurrencyWrapper::new(
         MsgType::DigitalCurrency,
-        DigitalCurrency::new([0u8; 32], wallet_cert, 10000, cert_dcds, Vec::<u8>::new(), Vec::<u8>::new()),
+        DigitalCurrency::new(
+            wallet_cert,
+            10000,
+            cert_dcds,
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+        ),
     );
 
     digital_currency
-            .fill_kvhead(&keypair_dcds, &mut rng)
-            .unwrap();
+        .fill_kvhead(&keypair_dcds, &mut rng)
+        .unwrap();
 
     let bytes_currency = digital_currency.to_bytes().encode_hex_upper::<String>();
 
-    let new_currency: DigitalCurrencyWrapper = DigitalCurrencyWrapper::from_bytes(&Vec::<u8>::from_hex(&bytes_currency).unwrap()).unwrap();
+    let new_currency: DigitalCurrencyWrapper =
+        DigitalCurrencyWrapper::from_bytes(&Vec::<u8>::from_hex(&bytes_currency).unwrap()).unwrap();
 
     assert_eq!(new_currency.verfiy_kvhead().is_ok(), true);
     assert_eq!(new_currency.to_bytes(), digital_currency.to_bytes());

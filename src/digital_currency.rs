@@ -1,14 +1,18 @@
-use kv_object::sm2::CertificateSm2;
-use kv_object::KVObjectError;
-use serde::{Deserialize, Serialize};
+use crate::{deser_bytes_with, get_rng_core, ser_bytes_with};
+use asymmetric_crypto::hasher::sm3::Sm3;
+use chrono::prelude::Local;
 use dislog_hal::Bytes;
+use dislog_hal::Hasher;
+use hex::ToHex;
 use kv_object::kv_object::{KVBody, KVObject};
 use kv_object::prelude::AttrProxy;
-use crate::{ser_bytes_with, deser_bytes_with};
-
+use kv_object::sm2::CertificateSm2;
+use kv_object::KVObjectError;
+use rand::RngCore;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DigitalCurrency{
+pub struct DigitalCurrency {
     /// 唯一标识
     #[serde(
         serialize_with = "ser_bytes_with",
@@ -27,15 +31,29 @@ pub struct DigitalCurrency{
     addition: Vec<u8>,
 }
 
-impl DigitalCurrency{
+impl DigitalCurrency {
     pub fn new(
-        id: [u8; 32],
         owner: CertificateSm2,
         amount: u64,
         issue: CertificateSm2,
         script: Vec<u8>,
         addition: Vec<u8>,
     ) -> Self {
+        let mut rng = get_rng_core();
+
+        let mut hasher = Sm3::default();
+
+        let now = Local::now().timestamp_millis();
+
+        let mut arr = [0u8; 32];
+        rng.fill_bytes(&mut arr);
+        hasher.update(now.to_le_bytes());
+        hasher.update(owner.to_bytes().as_ref());
+        hasher.update(amount.to_le_bytes());
+        hasher.update(issue.to_bytes().as_ref());
+        hasher.update(arr);
+        let id = hasher.finalize();
+
         Self {
             id,
             owner,
@@ -48,6 +66,10 @@ impl DigitalCurrency{
 
     pub fn get_id(&self) -> &[u8; 32] {
         &self.id
+    }
+
+    pub fn get_id_str(&self) -> String {
+        self.id.encode_hex_upper::<String>()
     }
 
     pub fn get_owner(&self) -> &CertificateSm2 {

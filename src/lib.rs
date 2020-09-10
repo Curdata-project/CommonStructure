@@ -1,8 +1,11 @@
-
 pub mod digital_currency;
-use serde::{Deserialize, Serializer, Deserializer};
-use hex::{FromHex, ToHex};
 
+pub mod transaction;
+
+pub mod error;
+
+use hex::{FromHex, ToHex};
+use serde::{Deserialize, Deserializer, Serializer};
 
 pub fn ser_bytes_with<S>(obj: &[u8; 32], serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -20,4 +23,10 @@ where
     let field = <[u8; 32]>::from_hex(d_str)
         .map_err(|_| serde::de::Error::custom(format_args!("invalid hex string")))?;
     Ok(field)
+}
+
+use rand::RngCore;
+
+pub fn get_rng_core() -> impl RngCore + Send {
+    rand::rngs::OsRng
 }
