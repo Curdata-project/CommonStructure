@@ -21,9 +21,9 @@ pub struct Transaction {
     outputs: Vec<(CertificateSm2, u64)>,
 }
 
-impl Transaction{
+impl Transaction {
     pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
-        Self {inputs, outputs }
+        Self { inputs, outputs }
     }
 }
 
