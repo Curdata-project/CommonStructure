@@ -19,35 +19,20 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
-    /// 输入交易货币
-    inputs: Vec<DigitalCurrencyWrapper>,
-    /// 金额 （收款方证书, 收款金额）
-    outputs: Vec<(CertificateSm2, u64)>,
-}
-
-impl Transaction {
-    pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
-        Self { inputs, outputs }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactionWrapper {
-    msgtype: MsgType,
     /// 唯一标识
     #[serde(
         serialize_with = "ser_bytes_with",
         deserialize_with = "deser_bytes_with"
     )]
-    id: [u8; 32],
-    /// 交易信息
-    inner: Transaction,
-    /// 付款方的签名集合
-    signs: Vec<(CertificateSm2, SignatureSm2)>,
+    pub id: [u8; 32],
+    /// 输入交易货币
+    pub inputs: Vec<DigitalCurrencyWrapper>,
+    /// 金额 （收款方证书, 收款金额）
+    pub outputs: Vec<(CertificateSm2, u64)>,
 }
 
-impl TransactionWrapper {
-    pub fn new(inner: Transaction) -> Self {
+impl Transaction {
+    pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
         let mut rng = get_rng_core();
 
         let mut hasher = Sm3::default();
@@ -56,25 +41,38 @@ impl TransactionWrapper {
 
         let mut arr = [0u8; 32];
         rng.fill_bytes(&mut arr);
-        hasher.update(inner.to_bytes());
         hasher.update(now.to_le_bytes());
         hasher.update(arr);
         let id = hasher.finalize();
+        Self { id, inputs, outputs }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionWrapper {
+    msgtype: MsgType,
+    /// 交易信息
+    inner: Transaction,
+    /// 付款方的签名集合
+    signs: Vec<(CertificateSm2, SignatureSm2)>,
+}
+
+impl TransactionWrapper {
+    pub fn new(inner: Transaction) -> Self {
 
         Self {
             msgtype: MsgType::Transaction,
-            id,
             inner,
             signs: Vec::<(CertificateSm2, SignatureSm2)>::new(),
         }
     }
 
     pub fn get_id(&self) -> &[u8; 32] {
-        &self.id
+        &self.inner.id
     }
 
     pub fn get_id_str(&self) -> String {
-        self.id.encode_hex_upper::<String>()
+        self.inner.id.encode_hex_upper::<String>()
     }
 
     pub fn get_inputs(&self) -> &Vec<DigitalCurrencyWrapper> {
