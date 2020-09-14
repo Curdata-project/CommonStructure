@@ -14,25 +14,31 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct TransactionInner {
+pub struct Transaction {
     /// 输入交易货币
     inputs: Vec<DigitalCurrencyWrapper>,
     /// 金额 （收款方证书, 收款金额）
     outputs: Vec<(CertificateSm2, u64)>,
 }
 
+impl Transaction{
+    pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
+        Self {inputs, outputs }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Transaction {
+pub struct TransactionWrapper {
     /// 交易信息
-    inner: TransactionInner,
+    inner: Transaction,
     /// 付款方的签名集合
     signs: Vec<(CertificateSm2, SignatureSm2)>,
 }
 
-impl Transaction {
-    pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
+impl TransactionWrapper {
+    pub fn new(inner: Transaction) -> Self {
         Self {
-            inner: TransactionInner { inputs, outputs },
+            inner,
             signs: Vec::<(CertificateSm2, SignatureSm2)>::new(),
         }
     }
@@ -134,7 +140,7 @@ impl Transaction {
     }
 }
 
-impl Bytes for TransactionInner {
+impl Bytes for Transaction {
     type BytesType = Vec<u8>;
 
     type Error = CommStructError;
@@ -148,7 +154,7 @@ impl Bytes for TransactionInner {
     }
 }
 
-impl Bytes for Transaction {
+impl Bytes for TransactionWrapper {
     type BytesType = Vec<u8>;
 
     type Error = CommStructError;

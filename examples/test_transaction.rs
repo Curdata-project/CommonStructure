@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use asymmetric_crypto::prelude::Keypair;
 use common_structure::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use common_structure::get_rng_core;
-use common_structure::transaction::Transaction;
+use common_structure::transaction::{Transaction, TransactionWrapper};
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::{CertificateSm2, KeyPairSm2};
@@ -77,7 +77,7 @@ fn main() {
     inputs.push(currency_2);
     let mut outputs = Vec::<(CertificateSm2, u64)>::new();
     outputs.push((wallet_cert_c.clone(), 20000));
-    let mut transaction = Transaction::new(inputs, outputs);
+    let mut transaction = TransactionWrapper::new(Transaction::new(inputs, outputs));
 
     let mut rng = get_rng_core();
     transaction.fill_sign(&wallet_keypair_b, &mut rng).unwrap();
