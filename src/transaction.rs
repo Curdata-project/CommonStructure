@@ -7,7 +7,7 @@ use asymmetric_crypto::prelude::Keypair;
 use chrono::prelude::Local;
 use dislog_hal::Bytes;
 use dislog_hal::Hasher;
-use hex::{FromHex, ToHex};
+use hex::ToHex;
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::AttrProxy;
 use kv_object::prelude::KValueObject;
@@ -44,7 +44,21 @@ impl Transaction {
         hasher.update(now.to_le_bytes());
         hasher.update(arr);
         let id = hasher.finalize();
-        Self { id, inputs, outputs }
+        Self {
+            id,
+            inputs,
+            outputs,
+        }
+    }
+
+    pub fn sign_by(
+        &self,
+        keypair: &KeyPairSm2,
+        rng: &mut impl RngCore,
+    ) -> Result<SignatureSm2, CommStructError> {
+        keypair
+            .sign::<Sm3, _>(self.to_bytes().as_ref(), rng)
+            .map_err(|_| CommStructError::SignatureError)
     }
 }
 
@@ -59,7 +73,6 @@ pub struct TransactionWrapper {
 
 impl TransactionWrapper {
     pub fn new(inner: Transaction) -> Self {
-
         Self {
             msgtype: MsgType::Transaction,
             inner,
@@ -75,6 +88,10 @@ impl TransactionWrapper {
         self.inner.id.encode_hex_upper::<String>()
     }
 
+    pub fn get_inner(&self) -> &Transaction {
+        &self.inner
+    }
+
     pub fn get_inputs(&self) -> &Vec<DigitalCurrencyWrapper> {
         &self.inner.inputs
     }
@@ -85,16 +102,10 @@ impl TransactionWrapper {
 
     pub fn fill_sign(
         &mut self,
-        keypair: &KeyPairSm2,
-        rng: &mut impl RngCore,
+        new_cert: CertificateSm2,
+        new_sign: SignatureSm2,
     ) -> Result<(), CommStructError> {
-        let inner_byte = self.inner.to_bytes();
-
-        let signature = keypair
-            .sign::<Sm3, _>(inner_byte.as_ref(), rng)
-            .map_err(|_| CommStructError::SignatureError)?;
-
-        self.signs.push((keypair.get_certificate(), signature));
+        self.signs.push((new_cert, new_sign));
 
         Ok(())
     }

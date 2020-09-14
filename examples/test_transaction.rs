@@ -83,8 +83,20 @@ fn main() {
     let mut transaction = TransactionWrapper::new(Transaction::new(inputs, outputs));
 
     let mut rng = get_rng_core();
-    transaction.fill_sign(&wallet_keypair_b, &mut rng).unwrap();
-    transaction.fill_sign(&wallet_keypair_a, &mut rng).unwrap();
+    let new_sign = transaction
+        .get_inner()
+        .sign_by(&wallet_keypair_b, &mut rng)
+        .unwrap();
+    transaction
+        .fill_sign(wallet_keypair_b.get_certificate(), new_sign)
+        .unwrap();
+    let new_sign = transaction
+        .get_inner()
+        .sign_by(&wallet_keypair_a, &mut rng)
+        .unwrap();
+    transaction
+        .fill_sign(wallet_keypair_a.get_certificate(), new_sign)
+        .unwrap();
 
     println!("{}", json!(transaction).to_string());
 
