@@ -10,6 +10,7 @@ use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::{CertificateSm2, KeyPairSm2};
 use rand::thread_rng;
+use serde_json::json;
 
 fn main() {
     let mut rng = thread_rng();
@@ -73,6 +74,8 @@ fn main() {
     currency_2.fill_kvhead(&keypair_dcds, &mut rng).unwrap();
 
     let mut inputs = Vec::<DigitalCurrencyWrapper>::new();
+
+    println!("{}", json!(currency_1).to_string());
     inputs.push(currency_1);
     inputs.push(currency_2);
     let mut outputs = Vec::<(CertificateSm2, u64)>::new();
@@ -82,6 +85,8 @@ fn main() {
     let mut rng = get_rng_core();
     transaction.fill_sign(&wallet_keypair_b, &mut rng).unwrap();
     transaction.fill_sign(&wallet_keypair_a, &mut rng).unwrap();
+
+    println!("{}", json!(transaction).to_string());
 
     assert_eq!(transaction.check_validated(), true);
     assert_eq!(transaction.get_inputs().len(), 2);

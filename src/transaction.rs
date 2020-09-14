@@ -1,9 +1,13 @@
 use crate::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use crate::error::CommStructError;
+use crate::{deser_bytes_with, get_rng_core, ser_bytes_with};
 use asymmetric_crypto::hasher::sm3::Sm3;
 use asymmetric_crypto::prelude::Certificate;
 use asymmetric_crypto::prelude::Keypair;
+use chrono::prelude::Local;
 use dislog_hal::Bytes;
+use dislog_hal::Hasher;
+use hex::{FromHex, ToHex};
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::AttrProxy;
 use kv_object::prelude::KValueObject;
@@ -30,6 +34,12 @@ impl Transaction {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionWrapper {
     msgtype: MsgType,
+    /// 唯一标识
+    #[serde(
+        serialize_with = "ser_bytes_with",
+        deserialize_with = "deser_bytes_with"
+    )]
+    id: [u8; 32],
     /// 交易信息
     inner: Transaction,
     /// 付款方的签名集合
@@ -38,11 +48,33 @@ pub struct TransactionWrapper {
 
 impl TransactionWrapper {
     pub fn new(inner: Transaction) -> Self {
+        let mut rng = get_rng_core();
+
+        let mut hasher = Sm3::default();
+
+        let now = Local::now().timestamp_millis();
+
+        let mut arr = [0u8; 32];
+        rng.fill_bytes(&mut arr);
+        hasher.update(inner.to_bytes());
+        hasher.update(now.to_le_bytes());
+        hasher.update(arr);
+        let id = hasher.finalize();
+
         Self {
             msgtype: MsgType::Transaction,
+            id,
             inner,
             signs: Vec::<(CertificateSm2, SignatureSm2)>::new(),
         }
+    }
+
+    pub fn get_id(&self) -> &[u8; 32] {
+        &self.id
+    }
+
+    pub fn get_id_str(&self) -> String {
+        self.id.encode_hex_upper::<String>()
     }
 
     pub fn get_inputs(&self) -> &Vec<DigitalCurrencyWrapper> {
