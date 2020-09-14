@@ -29,6 +29,7 @@ impl Transaction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionWrapper {
+    msgtype: MsgType,
     /// 交易信息
     inner: Transaction,
     /// 付款方的签名集合
@@ -38,6 +39,7 @@ pub struct TransactionWrapper {
 impl TransactionWrapper {
     pub fn new(inner: Transaction) -> Self {
         Self {
+            msgtype: MsgType::Transaction,
             inner,
             signs: Vec::<(CertificateSm2, SignatureSm2)>::new(),
         }
