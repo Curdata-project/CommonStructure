@@ -6,8 +6,15 @@ use std::path::PathBuf;
 use std::process::{self, Command};
 
 #[test]
-fn test_issue_quota() {
+fn test_currency() {
     let mut cmd = cmd_for_example("test_currency");
+    let out = cmd_output(&mut cmd);
+    let _: String = out.stdout().to_string();
+}
+
+#[test]
+fn test_transaction() {
+    let mut cmd = cmd_for_example("test_transaction");
     let out = cmd_output(&mut cmd);
     let _: String = out.stdout().to_string();
 }

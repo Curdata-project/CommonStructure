@@ -1,9 +1,13 @@
 use crate::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use crate::error::CommStructError;
+use crate::{deser_bytes_with, get_rng_core, ser_bytes_with};
 use asymmetric_crypto::hasher::sm3::Sm3;
 use asymmetric_crypto::prelude::Certificate;
 use asymmetric_crypto::prelude::Keypair;
+use chrono::prelude::Local;
 use dislog_hal::Bytes;
+use dislog_hal::Hasher;
+use hex::ToHex;
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::AttrProxy;
 use kv_object::prelude::KValueObject;
@@ -14,27 +18,78 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct TransactionInner {
-    /// 输入交易货币
-    inputs: Vec<DigitalCurrencyWrapper>,
-    /// 金额 （收款方证书, 收款金额）
-    outputs: Vec<(CertificateSm2, u64)>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
-    /// 交易信息
-    inner: TransactionInner,
-    /// 付款方的签名集合
-    signs: Vec<(CertificateSm2, SignatureSm2)>,
+    /// 唯一标识
+    #[serde(
+        serialize_with = "ser_bytes_with",
+        deserialize_with = "deser_bytes_with"
+    )]
+    pub id: [u8; 32],
+    /// 输入交易货币
+    pub inputs: Vec<DigitalCurrencyWrapper>,
+    /// 金额 （收款方证书, 收款金额）
+    pub outputs: Vec<(CertificateSm2, u64)>,
 }
 
 impl Transaction {
     pub fn new(inputs: Vec<DigitalCurrencyWrapper>, outputs: Vec<(CertificateSm2, u64)>) -> Self {
+        let mut rng = get_rng_core();
+
+        let mut hasher = Sm3::default();
+
+        let now = Local::now().timestamp_millis();
+
+        let mut arr = [0u8; 32];
+        rng.fill_bytes(&mut arr);
+        hasher.update(now.to_le_bytes());
+        hasher.update(arr);
+        let id = hasher.finalize();
         Self {
-            inner: TransactionInner { inputs, outputs },
+            id,
+            inputs,
+            outputs,
+        }
+    }
+
+    pub fn sign_by(
+        &self,
+        keypair: &KeyPairSm2,
+        rng: &mut impl RngCore,
+    ) -> Result<SignatureSm2, CommStructError> {
+        keypair
+            .sign::<Sm3, _>(self.to_bytes().as_ref(), rng)
+            .map_err(|_| CommStructError::SignatureError)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionWrapper {
+    msgtype: MsgType,
+    /// 交易信息
+    inner: Transaction,
+    /// 付款方的签名集合
+    signs: Vec<(CertificateSm2, SignatureSm2)>,
+}
+
+impl TransactionWrapper {
+    pub fn new(inner: Transaction) -> Self {
+        Self {
+            msgtype: MsgType::Transaction,
+            inner,
             signs: Vec::<(CertificateSm2, SignatureSm2)>::new(),
         }
+    }
+
+    pub fn get_id(&self) -> &[u8; 32] {
+        &self.inner.id
+    }
+
+    pub fn get_id_str(&self) -> String {
+        self.inner.id.encode_hex_upper::<String>()
+    }
+
+    pub fn get_inner(&self) -> &Transaction {
+        &self.inner
     }
 
     pub fn get_inputs(&self) -> &Vec<DigitalCurrencyWrapper> {
@@ -47,16 +102,10 @@ impl Transaction {
 
     pub fn fill_sign(
         &mut self,
-        keypair: &KeyPairSm2,
-        rng: &mut impl RngCore,
+        new_cert: CertificateSm2,
+        new_sign: SignatureSm2,
     ) -> Result<(), CommStructError> {
-        let inner_byte = self.inner.to_bytes();
-
-        let signature = keypair
-            .sign::<Sm3, _>(inner_byte.as_ref(), rng)
-            .map_err(|_| CommStructError::SignatureError)?;
-
-        self.signs.push((keypair.get_certificate(), signature));
+        self.signs.push((new_cert, new_sign));
 
         Ok(())
     }
@@ -134,7 +183,7 @@ impl Transaction {
     }
 }
 
-impl Bytes for TransactionInner {
+impl Bytes for Transaction {
     type BytesType = Vec<u8>;
 
     type Error = CommStructError;
@@ -148,7 +197,7 @@ impl Bytes for TransactionInner {
     }
 }
 
-impl Bytes for Transaction {
+impl Bytes for TransactionWrapper {
     type BytesType = Vec<u8>;
 
     type Error = CommStructError;

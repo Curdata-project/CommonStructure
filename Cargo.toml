@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 bincode = "1.3.1"
 serde = { version = "1.0", features = ["derive"] }
-kv-object = { path = "/home/xujian/Rworkspace/KVObject" }
+kv-object = { git = "https://curdata-bots:SBf(TdV2yeBP@github.com/Curdata-project/KVObject" }
 asymmetric-crypto = { git ="https://github.com/Yinet-project/asymmetric-crypto" }
 rand = { version = "0.7.3", default-features = false }
 dislog-hal = { git = "https://github.com/Yinet-project/dislog-hal" }

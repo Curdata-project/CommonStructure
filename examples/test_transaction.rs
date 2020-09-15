@@ -5,11 +5,12 @@ use alloc::vec::Vec;
 use asymmetric_crypto::prelude::Keypair;
 use common_structure::digital_currency::{DigitalCurrency, DigitalCurrencyWrapper};
 use common_structure::get_rng_core;
-use common_structure::transaction::Transaction;
+use common_structure::transaction::{Transaction, TransactionWrapper};
 use kv_object::kv_object::MsgType;
 use kv_object::prelude::KValueObject;
 use kv_object::sm2::{CertificateSm2, KeyPairSm2};
 use rand::thread_rng;
+use serde_json::json;
 
 fn main() {
     let mut rng = thread_rng();
@@ -73,15 +74,31 @@ fn main() {
     currency_2.fill_kvhead(&keypair_dcds, &mut rng).unwrap();
 
     let mut inputs = Vec::<DigitalCurrencyWrapper>::new();
+
+    println!("{}", json!(currency_1).to_string());
     inputs.push(currency_1);
     inputs.push(currency_2);
     let mut outputs = Vec::<(CertificateSm2, u64)>::new();
     outputs.push((wallet_cert_c.clone(), 20000));
-    let mut transaction = Transaction::new(inputs, outputs);
+    let mut transaction = TransactionWrapper::new(Transaction::new(inputs, outputs));
 
     let mut rng = get_rng_core();
-    transaction.fill_sign(&wallet_keypair_b, &mut rng).unwrap();
-    transaction.fill_sign(&wallet_keypair_a, &mut rng).unwrap();
+    let new_sign = transaction
+        .get_inner()
+        .sign_by(&wallet_keypair_b, &mut rng)
+        .unwrap();
+    transaction
+        .fill_sign(wallet_keypair_b.get_certificate(), new_sign)
+        .unwrap();
+    let new_sign = transaction
+        .get_inner()
+        .sign_by(&wallet_keypair_a, &mut rng)
+        .unwrap();
+    transaction
+        .fill_sign(wallet_keypair_a.get_certificate(), new_sign)
+        .unwrap();
+
+    println!("{}", json!(transaction).to_string());
 
     assert_eq!(transaction.check_validated(), true);
     assert_eq!(transaction.get_inputs().len(), 2);
